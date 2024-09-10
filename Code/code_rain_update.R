@@ -1,4 +1,5 @@
 library(tidyverse)
+library(lubridate)
 
 setwd('D:\\Ref.Data\\Data')
 
@@ -9,49 +10,67 @@ dat <- read.csv("405219\\405219.rainfall.Raw_Data.csv", header = TRUE)
 
 colnames(dat) <- c("Datetime", "Rain", "QC", "Comment")
 
+dat <- dat %>% select(-c(QC, Comment))
+
 # Convert Datetime to POSIXct
 #dat$Datetime <- as.POSIXct(dat$Datetime, format = "%d/%m/%Y %H:%M")
 
 dat$Datetime <- as.POSIXct(dat$Datetime, format = "%Y/%m/%d %H:%M:%S")
 
-dat <- dat %>% select(-c(QC, Comment))
+# Remove seconds and convert to POSIXct format
+#dat$Datetime <- as.POSIXct(format(dat$Datetime, "%Y/%m/%d %H:%M"), format = "%Y/%m/%d %H:%M")
+
+na_count <- sum(is.na(dat$Datetime))
+na_rows <- which(is.na(dat$Datetime))
+
+#remove NA row
+dat <- dat %>% filter(!is.na(Datetime))
 
 #Check Start Date and End Date of Data
-
 date_range <- range(dat$Datetime)
 
 
-# Specify the range manually from start and end of original rainfall data
+#For one year
 
-start_datetime <- as.POSIXct("2002-01-01 10:30:00", format = "%Y-%m-%d %H:%M:%S")
-end_datetime <- as.POSIXct("2024-02-06 12:00:00", format = "%Y-%m-%d %H:%M:%S")
+dat_2001 <- dat %>% filter(format(Datetime, "%Y") == "2002")
 
-# Create a complete time series with 1 minute intervals,
-#cannot do larger 15 min intervals because rainfall data have irregular increment.
-#so choose the finest resolution 1min and later resample to 15 min to avoid error.
-complete_time_series <- seq.POSIXt(from = start_datetime, to = end_datetime, by = "1 min")
+frequency <- "15 minutes"
 
-# Convert to data frame
-complete_data <- data.frame(Datetime = complete_time_series)
+#floor_date, we don't use
+#dat_resampled <- dat_2001 %>%
+  #mutate(Datetime = floor_date(Datetime, unit = frequency)) %>%
+  #group_by(Datetime) %>%
+  #summarise(Rain = sum(Rain, na.rm = TRUE))
 
-# Merge with original data to fill in missing values with zeros
-complete_data <- merge(complete_data, dat, by = "Datetime", all.x = TRUE)
+#use cealing date
+# Create bins for each interval and aggregate data
+dat_resampled <- dat_2001 %>%
+  # Adjust timestamps to the end of the interval
+  mutate(Datetime = ceiling_date(Datetime, unit = frequency)) %>%
+  group_by(Datetime) %>%
+  summarise(Rain = sum(Rain, na.rm = TRUE))
 
-# Replace NA values with zeros
-complete_data$Rainfall[is.na(complete_data$Rainfall)] <- 0
+# Create a sequence of all desired time intervals within the range of the data
+start_time <- min(dat_resampled$Datetime)
+end_time <- max(dat_resampled$Datetime)
 
-# Resample the data to 15-minute intervals and sum the rainfall
-resampled_data <- complete_data %>%
-  group_by(interval = cut(Datetime, breaks = "15 min")) %>%
-  summarise(total_rainfall = sum(Rainfall))
+all_intervals <- seq.POSIXt(from = start_time, to = end_time, by = "15 min")
 
-#Check Data
-total_rainfall = sum(dat$Rainfall)
-resample_rainfall = sum(resampled_data$total_rainfall)
+all_intervals_df <- data.frame(Datetime = all_intervals)
+
+final_resampled_data <- merge(all_intervals_df, dat_resampled, by = "Datetime", all.x = TRUE)
+final_resampled_data$Rain[is.na(final_resampled_data$Rain)] <- 0
+
+#Check
+sum(final_resampled_data$Rain)
+sum(dat_2001$Rain)
+
+
 
 # Write resampled data to a CSV file
 write.csv(resampled_data, "rainfall_resampled_15min.csv", row.names = FALSE)
 
+#------------------------------------------------#
 
 #Calculate annual rainfall
 #from Original Data
