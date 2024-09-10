@@ -29,42 +29,6 @@ dat <- dat %>% filter(!is.na(Datetime))
 #Check Start Date and End Date of Data
 date_range <- range(dat$Datetime)
 
-
-#For one year
-
-dat_2001 <- dat %>% filter(format(Datetime, "%Y") == "2002")
-
-frequency <- "15 minutes"
-
-#floor_date, we don't use
-#dat_resampled <- dat_2001 %>%
-  #mutate(Datetime = floor_date(Datetime, unit = frequency)) %>%
-  #group_by(Datetime) %>%
-  #summarise(Rain = sum(Rain, na.rm = TRUE))
-
-#use cealing date
-# Create bins for each interval and aggregate data
-dat_resampled <- dat_2001 %>%
-  # Adjust timestamps to the end of the interval
-  mutate(Datetime = ceiling_date(Datetime, unit = frequency)) %>%
-  group_by(Datetime) %>%
-  summarise(Rain = sum(Rain, na.rm = TRUE))
-
-# Create a sequence of all desired time intervals within the range of the data
-start_time <- min(dat_resampled$Datetime)
-end_time <- max(dat_resampled$Datetime)
-
-all_intervals <- seq.POSIXt(from = start_time, to = end_time, by = "15 min")
-
-all_intervals_df <- data.frame(Datetime = all_intervals)
-
-final_resampled_data <- merge(all_intervals_df, dat_resampled, by = "Datetime", all.x = TRUE)
-final_resampled_data$Rain[is.na(final_resampled_data$Rain)] <- 0
-
-#Check
-sum(final_resampled_data$Rain)
-sum(dat_2001$Rain)
-
 #for all years
 
 frequency <- "15 minutes"
@@ -175,42 +139,38 @@ ggplot(merged_data_long, aes(x = factor(Year), y = Total_Rainfall, fill = Datase
 
 
 
+#---------------Testing for One Year-----------------------##
 
+dat_2001 <- dat %>% filter(format(Datetime, "%Y") == "2001")
 
+frequency <- "15 minutes"
 
+#floor_date, we don't use
+#dat_resampled <- dat_2001 %>%
+#mutate(Datetime = floor_date(Datetime, unit = frequency)) %>%
+#group_by(Datetime) %>%
+#summarise(Rain = sum(Rain, na.rm = TRUE))
 
+#use cealing date
+# Create bins for each interval and aggregate data
+dat_resampled <- dat_2001 %>%
+  # Adjust timestamps to the end of the interval
+  mutate(Datetime = ceiling_date(Datetime, unit = frequency)) %>%
+  group_by(Datetime) %>%
+  summarise(Rain = sum(Rain, na.rm = TRUE))
 
-###Archive Code Not Working.
+# Create a sequence of all desired time intervals within the range of the data
+start_time <- min(dat_resampled$Datetime)
+end_time <- max(dat_resampled$Datetime)
 
-#Try 1
+all_intervals <- seq.POSIXt(from = start_time, to = end_time, by = "15 min")
 
-library(tidyverse)
-library(dplyr)
+all_intervals_df <- data.frame(Datetime = all_intervals)
 
-setwd('C:\\Users\\akkya\\Desktop\\New folder (2)')
+final_resampled_data <- merge(all_intervals_df, dat_resampled, by = "Datetime", all.x = TRUE)
+final_resampled_data$Rain[is.na(final_resampled_data$Rain)] <- 0
 
-dat = read.csv("405219_Rainfall.csv", header = T)
-
-dat$Datetime = as.POSIXct(dat$Datetime, format = "%d/%m/%Y %H:%M")
-
-resampled_data <- dat %>%
-  group_by(interval = cut(Datetime, breaks = "15 min")) %>%
-  summarise(total_rainfall = sum(Rainfall, na.rm = TRUE))
-
-total_rainfall = sum(dat$Rainfall)
-resample_rainfall = sum(resampled_data$total_rainfall)
-
-write.csv(resampled_data, "Rainfall_resampled_15min.csv", row.names = FALSE)
-
-#Results have major problems in time intervals such as 
-
-#30/03/2023 8:15
-#30/03/2023 8:30
-#30/03/2023 15:15
-#31/03/2023 1:15
-#31/03/2023 7:15
-
-#skipping of time and date. 
-#Aim, to get constant increment of 15 mins and if no rainfall value, it need to return zero.
-
+#Check
+sum(final_resampled_data$Rain)
+sum(dat_2001$Rain)
 
