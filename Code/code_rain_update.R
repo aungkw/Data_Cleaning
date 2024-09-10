@@ -65,10 +65,34 @@ final_resampled_data$Rain[is.na(final_resampled_data$Rain)] <- 0
 sum(final_resampled_data$Rain)
 sum(dat_2001$Rain)
 
+#for all years
 
+frequency <- "15 minutes"
+
+# Create bins for each interval and aggregate data
+dat_resampled <- dat %>%
+  # Adjust timestamps to the end of the interval
+  mutate(Datetime = ceiling_date(Datetime, unit = frequency)) %>%
+  group_by(Datetime) %>%
+  summarise(Rain = sum(Rain, na.rm = TRUE))
+
+# Create a sequence of all desired time intervals within the range of the data
+start_time <- min(dat_resampled$Datetime)
+end_time <- max(dat_resampled$Datetime)
+
+all_intervals <- seq.POSIXt(from = start_time, to = end_time, by = "15 min")
+
+all_intervals_df <- data.frame(Datetime = all_intervals)
+
+final_resampled_data <- merge(all_intervals_df, dat_resampled, by = "Datetime", all.x = TRUE)
+final_resampled_data$Rain[is.na(final_resampled_data$Rain)] <- 0
+
+#Check
+sum(final_resampled_data$Rain)
+sum(dat$Rain)
 
 # Write resampled data to a CSV file
-write.csv(resampled_data, "rainfall_resampled_15min.csv", row.names = FALSE)
+write.csv(final_resampled_data, "405219\\405219_rain_15min.csv", row.names = FALSE)
 
 #------------------------------------------------#
 
@@ -81,7 +105,7 @@ dat$Year <- lubridate::year(dat$Datetime)
 # Group by year and calculate total rainfall for each year
 annual_rainfall <- dat %>%
   group_by(Year) %>%
-  summarise(total_rainfall = sum(Rainfall, na.rm = TRUE))
+  summarise(total_rainfall = sum(Rain, na.rm = TRUE))
 
 # Print the annual rainfall
 print(annual_rainfall)
@@ -100,7 +124,7 @@ ggplot(annual_rainfall, aes(x = Year, y = total_rainfall)) +
 
 #for resampled data
 
-dat1 = resampled_data
+dat1 = final_resampled_data
 
 colnames(dat1) = c("Datetime","Rainfall")
 
