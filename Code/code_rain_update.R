@@ -51,6 +51,10 @@ all_intervals_df <- data.frame(Datetime = all_intervals)
 final_resampled_data <- merge(all_intervals_df, dat_resampled, by = "Datetime", all.x = TRUE)
 final_resampled_data$Rain[is.na(final_resampled_data$Rain)] <- 0
 
+# Filter data for the years 2010 to 2023
+resample_dat_2010_2023 <- final_resampled_data %>%
+  filter(year(Datetime) >= 2010 & year(Datetime) <= 2023)
+
 #Check
 sum(final_resampled_data$Rain)
 sum(dat$Rain)
@@ -58,6 +62,7 @@ sum(dat$Rain)
 # Write resampled data to a CSV file
 write.csv(final_resampled_data, "405219\\405219_rain_15min.csv", row.names = FALSE)
 
+write.csv(resample_dat_2010_2023, "405219\\405219_rain_15min_201023.csv", row.names = FALSE)
 #------------------------------------------------#
 
 #Calculate annual rainfall
