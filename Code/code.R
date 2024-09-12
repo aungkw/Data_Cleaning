@@ -9,22 +9,34 @@ dat <- read.csv("405219\\405219.rainfall.Raw_Data.csv", header = TRUE)
 
 colnames(dat) <- c("Datetime", "Rain", "QC", "Comment")
 
+dat <- dat %>% select(-c(QC, Comment))
+
 # Convert Datetime to POSIXct
 #dat$Datetime <- as.POSIXct(dat$Datetime, format = "%d/%m/%Y %H:%M")
 
 dat$Datetime <- as.POSIXct(dat$Datetime, format = "%Y/%m/%d %H:%M:%S")
 
-dat <- dat %>% select(-c(QC, Comment))
+# Remove seconds and convert to POSIXct format
+#dat$Datetime <- as.POSIXct(format(dat$Datetime, "%Y/%m/%d %H:%M"), format = "%Y/%m/%d %H:%M")
+
+na_count <- sum(is.na(dat$Datetime))
+na_rows <- which(is.na(dat$Datetime))
+
+#remove NA row
+dat <- dat %>% filter(!is.na(Datetime))
+
 
 #Check Start Date and End Date of Data
-
 date_range <- range(dat$Datetime)
 
 
 # Specify the range manually from start and end of original rainfall data
 
-start_datetime <- as.POSIXct("2002-01-01 10:30:00", format = "%Y-%m-%d %H:%M:%S")
-end_datetime <- as.POSIXct("2024-02-06 12:00:00", format = "%Y-%m-%d %H:%M:%S")
+start_datetime <- as.POSIXct("2001-01-01 00:00:00", format = "%Y-%m-%d %H:%M:%S")
+end_datetime <- as.POSIXct("2023-12-31 12:00:00", format = "%Y-%m-%d %H:%M:%S")
+
+#start_datetime <- as.POSIXct(date_range[1], format = "%Y-%m-%d %H:%M:%S")
+#end_datetime <- as.POSIXct(date_range[2], format = "%Y-%m-%d %H:%M:%S")
 
 # Create a complete time series with 1 minute intervals,
 #cannot do larger 15 min intervals because rainfall data have irregular increment.
@@ -38,15 +50,15 @@ complete_data <- data.frame(Datetime = complete_time_series)
 complete_data <- merge(complete_data, dat, by = "Datetime", all.x = TRUE)
 
 # Replace NA values with zeros
-complete_data$Rainfall[is.na(complete_data$Rainfall)] <- 0
+complete_data$Rain[is.na(complete_data$Rain)] <- 0
 
 # Resample the data to 15-minute intervals and sum the rainfall
 resampled_data <- complete_data %>%
   group_by(interval = cut(Datetime, breaks = "15 min")) %>%
-  summarise(total_rainfall = sum(Rainfall))
+  summarise(total_rainfall = sum(Rain))
 
 #Check Data
-total_rainfall = sum(dat$Rainfall)
+total_rainfall = sum(dat$Rain)
 resample_rainfall = sum(resampled_data$total_rainfall)
 
 # Write resampled data to a CSV file
